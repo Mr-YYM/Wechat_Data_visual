@@ -1,5 +1,6 @@
 import wxpy
 import re
+import json
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -83,24 +84,58 @@ def get_bar_data(p_data, category):
     if fore_num != 0:
         bar_data['国外'] = fore_num
     if unknown_num != 0:
-        bar_data['unknown'] = unknown_num
+        bar_data['↑\nunknown'] = unknown_num
     return bar_data
 
 
+def read_data_from_WeChat(Wechat_bot):
+    # show and certify a group
+    groups = Wechat_bot.groups()
+    for k, v in enumerate(groups):
+        print("%d、%s" % (k, v.name))
+    s = int(input("选定一个群"))
+    group = groups[s]
+
+    # get group info/data
+    group.update_group(True)
+    print(group.members.stats_text())
+    group_members_stat = group.members.stats()
+    group_members_stat['group_name'] = group.name
+
+    # save group_data to json file
+    f = open('group_data.json', 'w')
+    f.write(json.dumps(group_members_stat, indent=4))
+    f.close()
+
+    return group, group_members_stat
+
+
+def is_int(val):
+    try:
+        int(val)
+        return True
+    except ValueError:
+        return False
+
+
+def read_data_from_file(f):
+    group_members_stat = json.loads(f.read())
+    f.close()
+
+    class Group:
+        name = group_members_stat['group_name']
+
+    return Group, group_members_stat
+
+# 提供两种方式获取数据，首先先要登陆微信获取一次数据【第一二三行】。
+# 后来的启动，可以调用read_data_from_WeChat()【第四行】从文件获取数据
 # log in WeChat
-bot = wxpy.Bot()
+# bot = wxpy.Bot()
+# group, wechat_data = read_data_from_WeChat(bot)
 
-# show and certify a group
-groups = bot.groups()
-for k, v in enumerate(groups):
-    print("%d、%s" % (k, v.name))
-s = int(input("选定一个群"))
-group = groups[s]
 
-# get group info/data
-group.update_group(True)
-print(group.members.stats_text())
-group_members_stat = group.members.stats()
+group, wechat_data = read_data_from_file(open('group_data.json', 'r'))
+
 
 # Initialize the plot
 mpl.style.use('seaborn')
@@ -116,8 +151,8 @@ plt.rcParams.update({'font.size': 15})
 fig, axs = plt.subplots(3, 1, figsize=(9, 16), dpi=200)
 
 # Process the sex_data
-gms_of_sex = group_members_stat['sex']
-sex_num_dict = {'unknown': gms_of_sex[0], 'boy': gms_of_sex[1], 'girl': gms_of_sex[2]}
+chat_data_of_sex = {int(k): v for k, v in wechat_data['sex'].items() if is_int(k)}
+sex_num_dict = {'unknown': chat_data_of_sex[0], 'boy': chat_data_of_sex[1], 'girl': chat_data_of_sex[2]}
 sex_data = {k: v for k, v in sex_num_dict.items() if v != 0}  # filter out the element which its value is 0
 
 # show the sex_data as a pie
@@ -125,14 +160,14 @@ pie_title = "该群({0})的{1}比例".format(group.name, '性别')
 get_pie(axs[0], sex_data, title=pie_title)
 
 # Process the province_data (p:province)
-p_bar_data = get_bar_data(group_members_stat['province'], '省份')
+p_bar_data = get_bar_data(wechat_data['province'], '省份')
 
 # show the province_data as a bar
 bar_title = "该群({0})的成员{1}分布".format(group.name, '省份')
 get_a_bar(axs[1], p_bar_data, title=bar_title, if_sort=True)
 
 # Process the city_data
-c_bar_data = get_bar_data(group_members_stat['city'], '城市')
+c_bar_data = get_bar_data(wechat_data['city'], '城市')
 
 # show the city_data as a bar
 bar_title = "该群({0})的成员{1}分布".format(group.name, '城市')
