@@ -118,9 +118,8 @@ def is_int(val):
         return False
 
 
-def read_data_from_file(f):
-    group_members_stat = json.loads(f.read())
-    f.close()
+def read_data_from_file(data_file):
+    group_members_stat = json.loads(data_file.read())
 
     class Group:
         name = group_members_stat['group_name']
@@ -134,7 +133,8 @@ def read_data_from_file(f):
 # group, wechat_data = read_data_from_WeChat(bot)
 
 
-group, wechat_data = read_data_from_file(open('group_data.json', 'r'))
+with open('group_data.json', 'r') as f:
+    group, wechat_data = read_data_from_file(f)
 
 
 # Initialize the plot
@@ -148,7 +148,7 @@ mpl.rcParams['axes.titlesize'] = 18
 plt.rcParams.update({'font.size': 15})
 
 # generate a figure
-fig, axs = plt.subplots(3, 1, figsize=(9, 16), dpi=200)
+fig, axs = plt.subplots(3, 1, figsize=(9, 16))
 
 # Process the sex_data
 chat_data_of_sex = {int(k): v for k, v in wechat_data['sex'].items() if is_int(k)}
@@ -158,6 +158,7 @@ sex_data = {k: v for k, v in sex_num_dict.items() if v != 0}  # filter out the e
 # show the sex_data as a pie
 pie_title = "该群({0})的{1}比例".format(group.name, '性别')
 get_pie(axs[0], sex_data, title=pie_title)
+axs[0].title.set(y=1.1)  # Move the title up since it getting a little cramped
 
 # Process the province_data (p:province)
 p_bar_data = get_bar_data(wechat_data['province'], '省份')
@@ -165,6 +166,7 @@ p_bar_data = get_bar_data(wechat_data['province'], '省份')
 # show the province_data as a bar
 bar_title = "该群({0})的成员{1}分布".format(group.name, '省份')
 get_a_bar(axs[1], p_bar_data, title=bar_title, if_sort=True)
+axs[1].title.set(y=1.05)  # Move the title up since it getting a little cramped
 
 # Process the city_data
 c_bar_data = get_bar_data(wechat_data['city'], '城市')
@@ -172,10 +174,11 @@ c_bar_data = get_bar_data(wechat_data['city'], '城市')
 # show the city_data as a bar
 bar_title = "该群({0})的成员{1}分布".format(group.name, '城市')
 get_a_bar(axs[2], c_bar_data, title=bar_title, if_sort=True)
+axs[2].title.set(y=1.05)  # Move the title up since it getting a little cramped
 
 # show the plot
 fig.suptitle('群数据({0})'.format(group.name), fontsize=30)
-# Adjust layout to avoid the overlap between bar's label and the next bar's title
+# Adjust layout to prevent the overlap between bar's label and the next bar's title
 fig.subplots_adjust(hspace=0.3)
 
 fig.savefig('fig.pdf')
